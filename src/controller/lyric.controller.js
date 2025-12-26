@@ -44,6 +44,11 @@ class LyricController {
         const service = new LyricService();
         const paths = await this.readDirRecursive("./public/music");
 
+        if (paths.length === 0) {
+            console.log("🚫 No .mp3 files found in the specified directory.");
+            return;
+        }
+        
         for await (const filePath of paths) {
             fs.readdir(filePath, (err, files) => {
                 if (err) {
