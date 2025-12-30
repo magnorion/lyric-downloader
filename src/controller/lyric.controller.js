@@ -65,7 +65,6 @@ class LyricController {
 
                         const lrcFileName = `${filePath}/${file.replace(/\.[^/.]+$/, "")}.lrc`;
                         console.log(`👉 Processing file: ${file}`);
-                        
 
                         if (await this.fileExists(lrcFileName)) {
                             console.log(`⚠️ Lyrics already exist for ${file}`);
@@ -78,6 +77,16 @@ class LyricController {
                         const artist_name = metadata.common.artists?.[0] || "";
                         const album_name = metadata.common.album || "";
                         const duration = Math.floor(metadata.format.duration) || 0;
+
+                        if (
+                            track_name === "" ||
+                            artist_name === "" ||
+                            album_name === "" ||
+                            duration === 0
+                        ) {
+                            console.log(`🚫 Missing metadata for ${file}, skipping...`);
+                            return;
+                        }
 
                         // add a small delay to avoid rate limiting
                         await new Promise(resolve => setTimeout(resolve, 2000));
