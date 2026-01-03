@@ -3,18 +3,20 @@ const { parseFile } = require("music-metadata");
 const fs = require("fs");
 const path = require("path");
 
+const MUSIC_REGEX = /\.(mp3|flac|ogg|opus|m4a|aac|wav|aiff?|ape|alac)$/i;
+
 class LyricController {
 
     readDirRecursive = async (dirPath) => {
         const entries = await fs.promises.readdir(dirPath, { withFileTypes: true });
         let results = [];
 
-        // Verifica se existe algum .mp3 na pasta atual
-        const hasMp3 = entries.some(
-            entry => entry.isFile() && entry.name.toLowerCase().endsWith('.mp3')
+        // Verifica se existe algum arquivo de música na pasta atual
+        const hasMusic = entries.some(
+            entry => entry.isFile() && MUSIC_REGEX.test(entry.name)
         );
 
-        if (hasMp3) {
+        if (hasMusic) {
             results.push(dirPath);
         }
 
@@ -58,7 +60,6 @@ class LyricController {
 
                 files.forEach(async (file) => {
                     try {
-                        const MUSIC_REGEX = /\.(mp3|flac|ogg|opus|m4a|aac|wav|aiff?|ape|alac)$/i;
                         if (MUSIC_REGEX.test(file) === false) {
                             return;
                         }
