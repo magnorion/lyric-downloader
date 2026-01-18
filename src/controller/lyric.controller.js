@@ -51,59 +51,60 @@ class LyricController {
             return;
         }
         
-        for await (const filePath of paths) {
-            fs.readdir(filePath, (err, files) => {
+        for (const filePath of paths) {
+            fs.readdir(filePath, async (err, files) => {
                 if (err) {
                     console.error("😵‍💫 Error reading directory:", err);
                     return;
                 }
 
                 files.forEach(async (file) => {
-                    try {
-                        if (MUSIC_REGEX.test(file) === false) {
-                            return;
-                        }
+                    if (MUSIC_REGEX.test(file) === false) {
+                        return;
+                    }
+                    
+                    const lrcFileName = `${filePath}/${file.replace(/\.[^/.]+$/, "")}.lrc`;
+                    console.log(`👉 Processing file: ${file}`);
+                    
+                    if (await this.fileExists(lrcFileName)) {
+                        console.log(`⚠️ Lyrics already exist for ${file}`);
+                        return;
+                    }
+                    
+                    const metadata = await parseFile(`${filePath}/${file}`);
+                    
+                    const track_name = metadata.common.title || "";
+                    const artist_name = metadata.common.artists?.[0] || "";
+                    const album_name = metadata.common.album || "";
+                    const duration = Math.floor(metadata.format.duration) || 0;
+                    
+                    if (
+                        track_name === "" ||
+                        artist_name === "" ||
+                        album_name === "" ||
+                        duration === 0
+                    ) {
+                        console.log(`🚫 Missing metadata for ${file}, skipping...`);
+                        return;
+                    }
+                    
+                    // add a small delay to avoid rate limiting
+                    await new Promise(resolve => setTimeout(resolve, 2000));
 
-                        const lrcFileName = `${filePath}/${file.replace(/\.[^/.]+$/, "")}.lrc`;
-                        console.log(`👉 Processing file: ${file}`);
+                    const lrclibData = await service.getLyric(track_name, artist_name, album_name, duration);
+                    
+                    if (lrclibData) {
+                        const { syncedLyrics, plainLyrics } = lrclibData;
 
-                        if (await this.fileExists(lrcFileName)) {
-                            console.log(`⚠️ Lyrics already exist for ${file}`);
-                            return;
-                        }
-
-                        const metadata = await parseFile(`${filePath}/${file}`);
-                        
-                        const track_name = metadata.common.title || "";
-                        const artist_name = metadata.common.artists?.[0] || "";
-                        const album_name = metadata.common.album || "";
-                        const duration = Math.floor(metadata.format.duration) || 0;
-
-                        if (
-                            track_name === "" ||
-                            artist_name === "" ||
-                            album_name === "" ||
-                            duration === 0
-                        ) {
-                            console.log(`🚫 Missing metadata for ${file}, skipping...`);
-                            return;
-                        }
-
-                        // add a small delay to avoid rate limiting
-                        await new Promise(resolve => setTimeout(resolve, 2000));
-
-                        const lrclibData = await service.getLyric(track_name, artist_name, album_name, duration);
-                        const { syncedLyrics } = lrclibData;
-
-                        if (syncedLyrics) {
-                            fs.writeFileSync(lrcFileName, syncedLyrics, "utf8");
+                        if (syncedLyrics || plainLyrics) {
+                            const finalLyrics = syncedLyrics || plainLyrics;
+                            fs.writeFileSync(lrcFileName, finalLyrics, "utf8");
                             console.log(`👌 Lyrics saved to ${lrcFileName}`);
-                        } else {
-                            console.log(`🚫 No synced lyrics found for ${file}`);
                         }
 
-                    } catch (error) {
-                        console.error(`😵‍💫 Error processing file ${file}:`, error);
+                        await new Promise(resolve => setTimeout(resolve, 2000));
+                    } else {
+                        console.log(`🚫 No synced lyrics found for ${file}`);
                     }
                 });
             });
